@@ -1,58 +1,54 @@
 import json
 from pathlib import Path
+from html import escape  # falls Namen/Orte Sonderzeichen enthalten
 
 TEMPLATE_PATH = Path("animals_template.html")
 DATA_PATH = Path("animals_data.json")
 OUTPUT_PATH = Path("animals.html")
 
 def load_data(file_path):
-    """Loads a JSON file."""
-    with open(file_path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
+    with open(file_path, "r", encoding="utf-8") as h:
+        return json.load(h)
 
-def make_animals_html(animals):
-    """Erzeugt HTML-Listeneinträge für alle Tiere."""
-    html_blocks = []
+def make_animals_html_items(animals):
+    """Erzeugt den HTML-String mit <li class="cards__item"> und <br/>-Zeilen."""
+    output = ""
 
     for animal in animals:
         name = animal.get("name")
-        diet = animal.get("characteristics", {}).get("diet")
-        locations = animal.get("locations", [])
-        first_location = locations[0] if locations else None
-        type_ = animal.get("characteristics", {}).get("type")
+        diet = (animal.get("characteristics") or {}).get("diet")
+        type_ = (animal.get("characteristics") or {}).get("type")
+        locations = animal.get("locations") or []
+        first_location = locations[0] if isinstance(locations, list) and locations else None
 
-        
-        html = '<li class="cards__item">\n'
+        # Baue den <li>-Block nur, wenn es mind. ein Feld gibt
+        lines = []
         if name:
-            html += f'  <h2 class="card__title">{name}</h2>\n'
-        html += '  <div class="card__text">\n'
+            lines.append(f"Name: {escape(name)}<br/>")
         if diet:
-            html += f'    <p><strong>Diet:</strong> {diet}</p>\n'
+            lines.append(f"Diet: {escape(diet)}<br/>")
         if first_location:
-            html += f'    <p><strong>Location:</strong> {first_location}</p>\n'
+            lines.append(f"Location: {escape(first_location)}<br/>")
         if type_:
-            html += f'    <p><strong>Type:</strong> {type_}</p>\n'
-        html += '  </div>\n'
-        html += '</li>\n'
+            lines.append(f"Type: {escape(type_)}<br/>")
 
-        html_blocks.append(html)
+        if lines:
+            output += '<li class="cards__item">'
+            # Newlines im String sind optional, Browser ignoriert Whitespace
+            output += "\n" + "\n".join(lines) + "\n"
+            output += "</li>\n"
 
-    return "\n".join(html_blocks)
+    return output
 
 def main():
-    
     animals = load_data(DATA_PATH)
+    items_html = make_animals_html_items(animals)
 
-    
-    animals_html = make_animals_html(animals)
-
-    
     template_html = TEMPLATE_PATH.read_text(encoding="utf-8")
-    final_html = template_html.replace("__REPLACE_ANIMALS_INFO__", animals_html)
+    final_html = template_html.replace("__REPLACE_ANIMALS_INFO__", items_html)
 
-    
     OUTPUT_PATH.write_text(final_html, encoding="utf-8")
-    print(f"✅ Fertig! Datei gespeichert unter: {OUTPUT_PATH.resolve()}")
+    print(f"Fertig! {OUTPUT_PATH.resolve()}")
 
 if __name__ == "__main__":
     main()
